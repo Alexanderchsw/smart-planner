@@ -63,8 +63,8 @@ const Dashboard = () => {
   const handleEditTask = (index: number) => {
     setEditingIndex(index);
     setOpenModal(true);
-  };
-
+  };  
+   
   return (
     <>
       <AppBar position="static" sx={{ mb: 4 }}>
