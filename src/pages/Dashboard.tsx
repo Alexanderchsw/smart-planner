@@ -32,7 +32,9 @@ import { useState } from 'react';
 import TaskModal from '../components/TaskModal';
 
 interface Task {
+  id: string;
   title: string;
+  description: string;
   status: string;
 }
 
@@ -42,29 +44,31 @@ const Dashboard = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
   const [tasks, setTasks] = useState<Task[]>([
-    { title: 'Подключить авторизацию', status: 'В приоритете' },
-    { title: 'Реализовать календарь', status: 'Запланировано' },
-    { title: 'Сделать дизайн Dashboard', status: 'Выполнено' },
+    { id: '1', title: 'Подключить авторизацию', description: 'Важная задача', status: 'В приоритете' },
+    { id: '2', title: 'Реализовать календарь', description: 'Нужно добавить все модули', status: 'Запланировано' },
+    { id: '3', title: 'Сделать дизайн Dashboard', description: 'Сделать его красивым и понятным', status: 'Выполнено' },
   ]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const handleLogout = () => navigate('/');
-  const handleAddOrEditTask = (title: string, status: string) => {
-    if (editingIndex !== null) {
-      const updated = [...tasks];
-      updated[editingIndex] = { title, status };
-      setTasks(updated);
-      setEditingIndex(null);
+
+  const handleAddOrEditTask = (newTask: Task) => {
+    if (editingTask) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === newTask.id ? newTask : task))
+      );
     } else {
-      setTasks([...tasks, { title, status }]);
+      const newTaskWithId = { ...newTask, id: Date.now().toString() };
+      setTasks([...tasks, newTaskWithId]);
     }
+    setEditingTask(null);
   };
 
-  const handleEditTask = (index: number) => {
-    setEditingIndex(index);
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
     setOpenModal(true);
-  };  
-   
+  };
+
   return (
     <>
       <AppBar position="static" sx={{ mb: 4 }}>
@@ -131,12 +135,13 @@ const Dashboard = () => {
         {viewMode === 'list' ? (
           <Paper elevation={3}>
             <List>
-              {tasks.map((task, index) => (
+              {tasks.map((task) => (
                 <ListItem
-                  key={index}
+                  key={task.id}
                   divider
                   component="div"
-                  onClick={() => handleEditTask(index)}
+                  onClick={() => handleEditTask(task)}
+                  sx={{ cursor: 'pointer' }}
                 >
                   <ListItemText primary={task.title} secondary={task.status} />
                 </ListItem>
@@ -145,9 +150,9 @@ const Dashboard = () => {
           </Paper>
         ) : (
           <Box display="flex" flexWrap="wrap" gap={2}>
-            {tasks.map((task, index) => (
+            {tasks.map((task) => (
               <Box
-                key={index}
+                key={task.id}
                 sx={{
                   flexBasis: { xs: '100%', sm: '48%' },
                   flexGrow: 1,
@@ -155,7 +160,7 @@ const Dashboard = () => {
               >
                 <Card
                   sx={{ cursor: 'pointer' }}
-                  onClick={() => handleEditTask(index)}
+                  onClick={() => handleEditTask(task)}
                   variant="outlined"
                 >
                   <CardContent>
@@ -174,13 +179,9 @@ const Dashboard = () => {
       {/* Модальное окно */}
       <TaskModal
         open={openModal}
-        onClose={() => {
-          setOpenModal(false);
-          setEditingIndex(null);
-        }}
-        onSave={handleAddOrEditTask}
-        defaultTitle={editingIndex !== null ? tasks[editingIndex].title : ''}
-        defaultStatus={editingIndex !== null ? tasks[editingIndex].status : ''}
+        onClose={() => setOpenModal(false)}
+        onSubmit={handleAddOrEditTask}
+        initialData={editingTask}
       />
     </>
   );
