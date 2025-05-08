@@ -1,60 +1,40 @@
-import {
-  Box,
-  Button,
-  Container,
-  TextField,
-  Typography,
-  Link,
-  Paper,
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { TextField, Button, Container, Typography, Box } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 
-const Login = () => {
-  const navigate = useNavigate();
+const Login: React.FC = () => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    navigate('/dashboard');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    login(email, password);
   };
 
   return (
     <Container maxWidth="xs">
-      <Paper elevation={3} sx={{ p: 4, mt: 8 }}>
-        <Typography variant="h5" gutterBottom align="center">
-          Вход в систему
-        </Typography>
-        <Box component="form" noValidate sx={{ mt: 2 }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            label="Email"
-            autoComplete="email"
-            autoFocus
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            label="Пароль"
-            type="password"
-            autoComplete="current-password"
-          />
-          <Button
-            fullWidth
-            variant="contained"
-            color="primary"
-            sx={{ mt: 3, mb: 2 }}
-            onClick={handleLogin}
-          >
-            Войти
-          </Button>
-          <Box textAlign="center">
-            <Link href="/register" variant="body2">
-              Нет аккаунта? Зарегистрируйтесь
-            </Link>
-          </Box>
-        </Box>
-      </Paper>
+      <Box display="flex" flexDirection="column" gap={2} mt={5}>
+        <Typography variant="h5">Вход в систему</Typography>
+        <TextField
+          label="Email"
+          variant="outlined"
+          fullWidth
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <TextField
+          label="Пароль"
+          type="password"
+          variant="outlined"
+          fullWidth
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button variant="contained" color="primary" onClick={handleSubmit}>
+          Войти
+        </Button>
+      </Box>
     </Container>
   );
 };
