@@ -1,99 +1,77 @@
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  MenuItem,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Stack,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Button, MenuItem, RadioGroup,
+  FormControlLabel, Radio, Stack
 } from '@mui/material';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { Task } from '../hooks/useTasks';
+import { predictDuration } from '../aiModel';
 
 interface Props {
   open: boolean;
   initial?: Task;
   onClose: () => void;
-  onSave: (data: Omit<Task, 'id'>, id?: string) => void;
+  onSave: (data: Omit<Task,'id'>, id?: string) => void;
 }
 
-type Form = Omit<Task, 'id'>;
+type Form = Omit<Task,'id'>;
 
 export default function TaskModal({ open, initial, onClose, onSave }: Props) {
-  const { handleSubmit, register, control, formState: { errors } } = useForm<Form>({
+  const { register, handleSubmit, control } = useForm<Form>({
     defaultValues: initial ?? {
       title: '',
       description: '',
       priority: 'med',
       status: 'todo',
-      duration: 60,
+      duration: predictDuration('', 60),
       dueDate: '',
     },
   });
 
-  const submit = (data: Form) => onSave(data, initial?.id);
+  const title = useWatch({ control, name: 'title' });
+  const duration = useWatch({ control, name: 'duration' });
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>{initial ? 'Редактировать' : 'Новая задача'}</DialogTitle>
-
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          <TextField
-            label="Название"
-            {...register('title', { required: true })}
-            error={!!errors.title}
-          />
-
-          <TextField
-            label="Описание"
-            multiline
-            rows={3}
-            {...register('description')}
-          />
-
+          <TextField label="Название" {...register('title',{required:true})}/>
+          <TextField label="Описание" multiline rows={3} {...register('description')}/>
           <RadioGroup row {...register('priority')}>
-            <FormControlLabel value="high" control={<Radio />} label="High" />
-            <FormControlLabel value="med" control={<Radio />} label="Med" />
-            <FormControlLabel value="low" control={<Radio />} label="Low" />
+            <FormControlLabel value="high" control={<Radio/>} label="High"/>
+            <FormControlLabel value="med"  control={<Radio/>} label="Med"/>
+            <FormControlLabel value="low"  control={<Radio/>} label="Low"/>
           </RadioGroup>
-
           <TextField select label="Статус" {...register('status')}>
             <MenuItem value="todo">В приоритете</MenuItem>
             <MenuItem value="inprogress">Запланировано</MenuItem>
             <MenuItem value="done">Выполнено</MenuItem>
           </TextField>
-
           <TextField
             label="Длительность, мин"
             type="number"
-            {...register('duration', { valueAsNumber: true, min: 1 })}
+            helperText={`Рекомендовано ИИ: ${duration} мин`}
+            {...register('duration',{valueAsNumber:true,min:1})}
           />
-
           <Controller
-            name="dueDate"
             control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
+            name="dueDate"
+            rules={{ required:true }}
+            render={({field})=>(
               <TextField
                 label="Дедлайн"
                 type="datetime-local"
-                InputLabelProps={{ shrink: true }}
+                InputLabelProps={{shrink:true}}
                 {...field}
-                error={!!errors.dueDate}
               />
             )}
           />
         </Stack>
       </DialogContent>
-
       <DialogActions>
         <Button onClick={onClose}>Отмена</Button>
-        <Button variant="contained" onClick={handleSubmit(submit)}>
+        <Button variant="contained" onClick={handleSubmit(data=>onSave(data,initial?.id))}>
           Сохранить
         </Button>
       </DialogActions>
