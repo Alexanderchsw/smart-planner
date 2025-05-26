@@ -1,65 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Checkbox,
-  Select,
-  MenuItem,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  InputLabel,
-  FormControl,
-  Box,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, RadioGroup, FormControlLabel, Radio,
+  Checkbox, Select, MenuItem, Accordion, AccordionSummary,
+  AccordionDetails, InputLabel, FormControl, Box, Typography
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { DateTimePicker } from '@mui/x-date-pickers';
+import axios from 'axios';
+import { Task } from '../api/tasks';
 import dayjs, { Dayjs } from 'dayjs';
 
-interface Task {
-  id?: string;
-  title: string;
-  description: string;
-  priority: 'high' | 'med' | 'low';
-  duration: number;
-  deadline?: Dayjs | null;
-  flexibleRange: boolean;
-  deadlineFrom?: Dayjs | null;
-  deadlineTo?: Dayjs | null;
-  recurrence: 'single' | 'daily' | 'weekly' | 'cron';
-  tags: string[];
-  energyLevel?: string;
-  location?: string;
-  bufferAfter?: number;
-  completed?: boolean;
-}
+const TaskModal = ({
+  open,
+  onClose,
+  onSubmit,
+  initialData,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (task: Task) => void;
+  initialData: Task | null;
+}) => {
+  const [task, setTask] = useState<Task>({
+    title: '',
+    description: '',
+    status: 'pending',
+    priority: 'med',
+    duration: 0,
+    flexible: false,
+    repeat: 'single',
+    energy_level: '',
+    location: '',
+    buffer_after: 0,
+    deadline: undefined,
+    created_by_ai: false,
+    ai_estimate: 0,
+    ai_confidence: 0,
+  });
 
-const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
-  const [task, setTask] = useState<Task>(
-    initialData || {
-      title: '',
-      description: '',
-      priority: 'med',
-      duration: 0,
-      flexibleRange: false,
-      recurrence: 'single',
-      tags: [],
-      energyLevel: '',
-      location: '',
-      bufferAfter: 0,
-      completed: false,
-      deadline: null,
-      deadlineFrom: null,
-      deadlineTo: null,
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData) {
+      setTask(initialData);
     }
-  );
+  }, [initialData]);
+
+  useEffect(() => {
+    if (task.title.length >= 3) {
+      setAiLoading(true);
+      axios
+        .get(`http://127.0.0.1:8000/ai/predict-duration`, {
+          params: { title: task.title },
+        })
+        .then((res) => {
+          const { predicted_duration, confidence } = res.data;
+          setTask((prev) => ({
+            ...prev,
+            duration: predicted_duration,
+            created_by_ai: true,
+            ai_estimate: predicted_duration,
+            ai_confidence: confidence,
+          }));
+          setAiError(null);
+        })
+        .catch(() => setAiError('Ошибка предсказания AI'))
+        .finally(() => setAiLoading(false));
+    }
+  }, [task.title]);
 
   const handleChange = (field: keyof Task, value: any) => {
     setTask((prev) => ({ ...prev, [field]: value }));
@@ -81,6 +91,14 @@ const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
           onChange={(e) => handleChange('title', e.target.value)}
           margin="dense"
         />
+        {aiLoading && <Typography color="textSecondary">AI предсказание...</Typography>}
+        {task.created_by_ai && !aiLoading && (
+          <Typography color="success.main" variant="body2">
+            AI: {task.ai_estimate} мин. (доверие: {task.ai_confidence})
+          </Typography>
+        )}
+        {aiError && <Typography color="error">{aiError}</Typography>}
+
         <TextField
           label="Описание"
           multiline
@@ -112,45 +130,28 @@ const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
         <Box display="flex" alignItems="center" gap={2} mt={2}>
           <DateTimePicker
             label="Дедлайн"
-            value={task.deadline}
-            onChange={(value) => handleChange('deadline', value)}
+            value={task.deadline ? dayjs(task.deadline) : null}
+            onChange={(value) => handleChange('deadline', value?.toISOString())}
             sx={{ width: '100%' }}
           />
           <FormControlLabel
             control={
               <Checkbox
-                checked={task.flexibleRange}
-                onChange={(e) => handleChange('flexibleRange', e.target.checked)}
+                checked={task.flexible}
+                onChange={(e) => handleChange('flexible', e.target.checked)}
               />
             }
-            label="Гибкий диапазон"
+            label="Гибкий"
           />
         </Box>
 
-        {task.flexibleRange && (
-          <Box display="flex" gap={2} mt={2}>
-            <DateTimePicker
-              label="Не раньше"
-              value={task.deadlineFrom}
-              onChange={(value) => handleChange('deadlineFrom', value)}
-              sx={{ width: '50%' }}
-            />
-            <DateTimePicker
-              label="Не позже"
-              value={task.deadlineTo}
-              onChange={(value) => handleChange('deadlineTo', value)}
-              sx={{ width: '50%' }}
-            />
-          </Box>
-        )}
-
         <FormControl fullWidth margin="dense">
-          <InputLabel id="recurrence-label">Повторяемость</InputLabel>
+          <InputLabel id="repeat-label">Повторяемость</InputLabel>
           <Select
-            labelId="recurrence-label"
-             label="Повторяемость"
-            value={task.recurrence}
-            onChange={(e) => handleChange('recurrence', e.target.value)}
+            labelId="repeat-label"
+            label="Повторяемость"
+            value={task.repeat || 'single'}
+            onChange={(e) => handleChange('repeat', e.target.value)}
           >
             <MenuItem value="single">Однократно</MenuItem>
             <MenuItem value="daily">Ежедневно</MenuItem>
@@ -160,16 +161,14 @@ const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
         </FormControl>
 
         <Accordion>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            Дополнительные
-          </AccordionSummary>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>Дополнительные</AccordionSummary>
           <AccordionDetails>
             <FormControl fullWidth margin="dense">
               <InputLabel id="energy-label">Уровень энергии</InputLabel>
               <Select
                 labelId="energy-label"
-                value={task.energyLevel}
-                onChange={(e) => handleChange('energyLevel', e.target.value)}
+                value={task.energy_level || ''}
+                onChange={(e) => handleChange('energy_level', e.target.value)}
               >
                 <MenuItem value="low">Низкий</MenuItem>
                 <MenuItem value="medium">Средний</MenuItem>
@@ -184,12 +183,13 @@ const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
               onChange={(e) => handleChange('location', e.target.value)}
               margin="dense"
             />
+
             <TextField
               label="Буфер после задачи, мин"
               type="number"
               fullWidth
-              value={task.bufferAfter}
-              onChange={(e) => handleChange('bufferAfter', Number(e.target.value))}
+              value={task.buffer_after}
+              onChange={(e) => handleChange('buffer_after', Number(e.target.value))}
               margin="dense"
             />
           </AccordionDetails>
@@ -197,9 +197,7 @@ const TaskModal = ({ open, onClose, onSubmit, initialData }: any) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Отмена</Button>
-        <Button onClick={handleSave} variant="contained">
-          Сохранить
-        </Button>
+        <Button onClick={handleSave} variant="contained">Сохранить</Button>
       </DialogActions>
     </Dialog>
   );
