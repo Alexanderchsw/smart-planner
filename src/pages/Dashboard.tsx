@@ -19,6 +19,7 @@ import { useState } from 'react';
 
 import TaskModal from '../components/TaskModal';
 import { useTasks, Task } from '../hooks/useTasks';
+import { useNotifications } from '../hooks/useNotifications';
 import { pushHistory } from '../aiModel';
 
 const Dashboard = () => {
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
 
   const { tasks, addTask, updateTask, deleteTask } = useTasks();
+  useNotifications(tasks);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   /* ---------------- handler-ы ---------------- */
